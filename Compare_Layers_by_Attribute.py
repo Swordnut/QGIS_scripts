@@ -124,10 +124,10 @@ class CompareLayersAlgorithm(QgsProcessingAlgorithm):
         return 'Compare Layers by Attribute'
     
     def group(self):
-        return 'Example Scripts'
+        return 'Johan Scripts'
     
     def groupId(self):
-        return 'example_scripts'
+        return 'johan_scripts'
     
     def createInstance(self):
         return CompareLayersAlgorithm()
