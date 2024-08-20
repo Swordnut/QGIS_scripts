@@ -212,10 +212,14 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
         return 'Create Layout Extent Polygon'
     
     def group(self):
-        return 'johan_scripts'
+        return 'Johan Scripts'
     
     def groupId(self):
         return 'johan_scripts'
     
     def createInstance(self):
         return CreateLayoutExtentPolygon()
+    
+# Ensure the algorithm is recognized by QGIS when adding it via the "Add Script" tool
+def classFactory(iface):
+    return CreateLayoutExtentPolygon()
