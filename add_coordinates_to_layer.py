@@ -265,3 +265,7 @@ class AddCoordinatesToLayer(QgsProcessingAlgorithm):
     
     def createInstance(self):
         return AddCoordinatesToLayer()
+
+# Ensure the algorithm is recognized by QGIS when adding it via the "Add Script" tool
+def classFactory(iface):
+    return AddCoordinatesToLayer()
