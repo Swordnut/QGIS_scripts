@@ -221,10 +221,14 @@ class CreateLayoutExtentPolygon36Plus(QgsProcessingAlgorithm):
         return 'Create Layout Extent Polygon QGIS 36 and up'
     
     def group(self):
-        return 'johan_scripts'
+        return 'Johan Scripts'
     
     def groupId(self):
         return 'johan_scripts'
     
     def createInstance(self):
         return CreateLayoutExtentPolygon36Plus()
+    
+# Ensure the algorithm is recognized by QGIS when adding it via the "Add Script" tool
+def classFactory(iface):
+    return CreateLayoutExtentPolygon36Plus()
