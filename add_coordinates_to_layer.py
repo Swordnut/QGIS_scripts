@@ -100,6 +100,22 @@ class AddCoordinatesToLayer(QgsProcessingAlgorithm):
                 layer_provider.addAttributes([QgsField(new_name, QVariant.Double)])
         layer.updateFields()
 
+    def get_centroid(self, feature):
+        geom = feature.geometry()
+        return geom.centroid().asPoint()
+
+    def get_start_point(self, geom):
+        if QgsWkbTypes.isMultiType(geom.wkbType()):
+            return geom.asMultiPolyline()[0][0]
+        else:
+            return geom.asPolyline()[0]
+
+    def get_end_point(self, geom):
+        if QgsWkbTypes.isMultiType(geom.wkbType()):
+            return geom.asMultiPolyline()[0][-1]
+        else:
+            return geom.asPolyline()[-1]
+    
     def get_shortest_side_midpoints(self, geom):
         """Identify the two shortest sides of a polygon and return their midpoints."""
         if geom.isMultipart():
