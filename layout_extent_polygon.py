@@ -19,8 +19,9 @@ from qgis.core import (
     QgsSimpleFillSymbolLayer,
     QgsFillSymbol,
     QgsSingleSymbolRenderer,
-    LabelPlacement
+    QgsUnitTypes
 )
+from qgis.analysis import Qgis
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QColor, QFont
 
@@ -136,18 +137,39 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
         feature.setAttributes([order, f'{scale} - {layout_name}', subtitle, note])
         polygon_layer.dataProvider().addFeature(feature)
         
+        # Save the layer to the specified output path
+        QgsVectorFileWriter.writeAsVectorFormat(polygon_layer, output_path, "UTF-8", polygon_layer.crs(), "ESRI Shapefile", False)
+        
+        # Add or update the saved layer in the project
+        existing_layers = QgsProject.instance().mapLayersByName(f'atlas_{scale}')
+        if existing_layers:
+            existing_layer = existing_layers[0]
+            existing_layer.reload()
+            polygon_layer = existing_layer  # Use the reloaded layer
+        else:
+            saved_layer = QgsVectorLayer(output_path, f'atlas_{scale}', 'ogr')
+            if saved_layer.isValid():
+                QgsProject.instance().addMapLayer(saved_layer)
+                polygon_layer = saved_layer  # Use the added layer
+            else:
+                raise QgsProcessingException(f'Error adding layer to project: {output_path}')
+        
+        # Apply symbol and labeling styles
+        self.applyStyles(polygon_layer)
+        
+        return {}
+
+    def applyStyles(self, polygon_layer):
         # Define properties for the symbol layer
         properties = {
-            "border_width_map_unit_scale": "3x:0,0,0,0,0,0",
-            "color": "255,0,0,50",  # Red with 50% opacity
+            "border_width": "0.26",
+            "border_width_unit": "MM",
+            "color": "183,72,75,100",  # Fill color from QML
             "joinstyle": "bevel",
             "offset": "0,0",
-            "offset_map_unit_scale": "3x:0,0,0,0,0,0",
             "offset_unit": "MM",
             "outline_color": "0,0,0,255",  # Black outline
             "outline_style": "solid",
-            "outline_width": "0.26",
-            "outline_width_unit": "MM",
             "style": "solid",
         }
         
@@ -169,41 +191,28 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
         pal_layer.fieldName = 'order'
         
         # Use a suitable placement attribute
-        pal_layer.placement = LabelPlacement.AroundPoint  # Change to the appropriate LabelPlacement value
+        pal_layer.placement = Qgis.LabelPlacement.OverPoint
 
+        # Text format for labeling
         text_format = QgsTextFormat()
-        font = QFont("Arial", 30)
+        font = QFont("Arial")
         font.setItalic(True)
+        font.setBold(True)
         text_format.setFont(font)
-        
-        buffer_settings = QgsTextBufferSettings()
-        buffer_settings.setEnabled(False)  # No buffer
-        
-        text_format.setBuffer(buffer_settings)
+        text_format.setSizeUnit(QgsUnitTypes.RenderPoints)
+        text_format.setSize(30)
+        text_format.setColor(QColor(0, 0, 0, 255))  # Text color from QML
+
+        # Apply text format to pal_layer settings
         pal_layer.setFormat(text_format)
-        
+
+        # Create and apply labeling to the polygon layer
         labeling = QgsVectorLayerSimpleLabeling(pal_layer)
         polygon_layer.setLabelsEnabled(True)
         polygon_layer.setLabeling(labeling)
-        
+
+        # Refresh the layer to apply changes
         polygon_layer.triggerRepaint()
-        
-        # Save the layer to the specified output path
-        QgsVectorFileWriter.writeAsVectorFormat(polygon_layer, output_path, "UTF-8", polygon_layer.crs(), "ESRI Shapefile", False)
-        
-        # Add or update the saved layer in the project
-        existing_layers = QgsProject.instance().mapLayersByName(f'atlas_{scale}')
-        if existing_layers:
-            existing_layer = existing_layers[0]
-            existing_layer.reload()
-        else:
-            saved_layer = QgsVectorLayer(output_path, f'atlas_{scale}', 'ogr')
-            if saved_layer.isValid():
-                QgsProject.instance().addMapLayer(saved_layer)
-            else:
-                raise QgsProcessingException(f'Error adding layer to project: {output_path}')
-        
-        return {}
 
     def name(self):
         return 'createlayoutextentpolygon'
@@ -219,7 +228,7 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
     
     def createInstance(self):
         return CreateLayoutExtentPolygon()
-    
+
 # Ensure the algorithm is recognized by QGIS when adding it via the "Add Script" tool
 def classFactory(iface):
     return CreateLayoutExtentPolygon()
