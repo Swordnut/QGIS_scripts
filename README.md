@@ -37,6 +37,7 @@ This script compares attribute values in two different layers and selects featur
 ## layout_extent_polygon.py for Atlas layouts
 
 This helps create and edit atlas layouts. It fetches the extent of your selcted layout window and creates a scaled rectangle polygon layer
+-updated to woirk with QGIS 3.28 upwards, including the changes to styling in 3.36 onwards 
 
    - The new layer will be named "atlas_{mapscale}.shp" and will be saved to the project home.
    - Attributes: the layout order (int), origin "{mapscale} {layoutname}" and 2 empty character attributes for you to use as you want
@@ -49,7 +50,30 @@ This helps create and edit atlas layouts. It fetches the extent of your selcted 
       - QGIS does not support that in the proccessing toolbox. You will have to add your own or replace my list in the code. I have left a user input parameter to catch anything else.
 
 
-## layout_extent_polygon_qgis_36_and_up.py for Atlas layouts
+## add_coordinates_to_layer
 
-Same as the last script except I had to change it to account for the changes to labeling from QGIS 36.0 onward
+This is for archaeological trenching, plus general usefulness
+
+Adds x and y coordinates to a layer without creating a new virtual layer. 
+Create a new shapefile or modify the existing one.
+Add new attribute fileds or overwrite existing ones
+
+It should add x and y coords:
+•	Points and polys – centroid x and y
+•	Lines - start and end x and y
+•	Trenches that are polygons – x and y for the mid points of the 2 shortest sides. 
+
+Options 
+   - overwrite existing fields 
+      - yes by default
+      - untick this to get x_1, y_1 etc, if you want to know how they have changed or if you need to keep the old coordinates.
+   - create a new layer 
+      - no by default
+         - there is already a thing that adds coords and spits out a new layer but I thought it best to have the option
+   - Do the start and end of trench polygons.
+      - Johan does need telling – otherwise you just get the centrepoints. 
+
+T-shaped trenches are not something it will deal with. Johan is not a clever digital manservant, just a hard-working one. 
+
+
 
