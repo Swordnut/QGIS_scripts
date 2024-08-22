@@ -81,81 +81,95 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        layout_index = self.parameterAsEnum(parameters, self.LAYOUT_NAME, context)
-        map_item_index = self.parameterAsEnum(parameters, self.MAP_NAME, context)
-        custom_map_item_name = self.parameterAsString(parameters, self.CUSTOM_MAP_NAME, context)
-        subtitle = self.parameterAsString(parameters, self.SUBTITLE, context)
-        note = self.parameterAsString(parameters, self.NOTE, context)
         
-        layout_manager = QgsProject.instance().layoutManager()
-        layout_name = layout_manager.layouts()[layout_index].name()
-        layout = layout_manager.layoutByName(layout_name)
+        # Minimal feedback output
+        feedback.setProgressText('Processing layout extent polygon...')
         
-        map_item_names = ['Map_1', 'In_Report_Map', 'Small Scale Map', 'Mid Scale Map', 'UK Map']
-        map_item_name = custom_map_item_name if custom_map_item_name else map_item_names[map_item_index]
-        
-        map_item = layout.itemById(map_item_name)
-        
-        if not map_item:
-            raise QgsProcessingException(f'Map item "{map_item_name}" not found in layout "{layout_name}"')
-        
-        extent = map_item.extent()
-        scale = round(map_item.scale())
-        
-        project_home = QgsProject.instance().homePath()
-        output_path = os.path.join(project_home, f'atlas_{scale}.shp')
-        
-        if not os.path.exists(output_path):
-            project_crs = QgsProject.instance().crs()
-            polygon_layer = QgsVectorLayer(f'Polygon?crs={project_crs.authid()}', f'atlas_{scale}', 'memory')
-            provider = polygon_layer.dataProvider()
-            provider.addAttributes([
-                QgsField('order', QVariant.Int),
-                QgsField('scale', QVariant.String),
-                QgsField('subtitle', QVariant.String),
-                QgsField('note', QVariant.String)
-            ])
-            polygon_layer.updateFields()
-            order = 1
-        else:
-            polygon_layer = QgsVectorLayer(output_path, f'atlas_{scale}', 'ogr')
-            if not polygon_layer.isValid():
-                raise QgsProcessingException(f'Failed to load existing layer: {output_path}')
-            features = list(polygon_layer.getFeatures())
-            order = max([f['order'] for f in features], default=0) + 1
-        
-        points = [
-            QgsPointXY(extent.xMinimum(), extent.yMinimum()),
-            QgsPointXY(extent.xMaximum(), extent.yMinimum()),
-            QgsPointXY(extent.xMaximum(), extent.yMaximum()),
-            QgsPointXY(extent.xMinimum(), extent.yMaximum()),
-            QgsPointXY(extent.xMinimum(), extent.yMinimum())
-        ]
-        
-        feature = QgsFeature()
-        feature.setGeometry(QgsGeometry.fromPolygonXY([points]))
-        feature.setAttributes([order, f'{scale} - {layout_name}', subtitle, note])
-        polygon_layer.dataProvider().addFeature(feature)
-        
-        # Save the layer to the specified output path
-        QgsVectorFileWriter.writeAsVectorFormat(polygon_layer, output_path, "UTF-8", polygon_layer.crs(), "ESRI Shapefile", False)
-        
-        # Add or update the saved layer in the project
-        existing_layers = QgsProject.instance().mapLayersByName(f'atlas_{scale}')
-        if existing_layers:
-            existing_layer = existing_layers[0]
-            existing_layer.reload()
-            polygon_layer = existing_layer  # Use the reloaded layer
-        else:
-            saved_layer = QgsVectorLayer(output_path, f'atlas_{scale}', 'ogr')
-            if saved_layer.isValid():
-                QgsProject.instance().addMapLayer(saved_layer)
-                polygon_layer = saved_layer  # Use the added layer
+        try:
+            layout_index = self.parameterAsEnum(parameters, self.LAYOUT_NAME, context)
+            map_item_index = self.parameterAsEnum(parameters, self.MAP_NAME, context)
+            custom_map_item_name = self.parameterAsString(parameters, self.CUSTOM_MAP_NAME, context)
+            subtitle = self.parameterAsString(parameters, self.SUBTITLE, context)
+            note = self.parameterAsString(parameters, self.NOTE, context)
+            
+            layout_manager = QgsProject.instance().layoutManager()
+            layout_name = layout_manager.layouts()[layout_index].name()
+            layout = layout_manager.layoutByName(layout_name)
+            
+            map_item_names = ['Map_1', 'In_Report_Map', 'Small Scale Map', 'Mid Scale Map', 'UK Map']
+            map_item_name = custom_map_item_name if custom_map_item_name else map_item_names[map_item_index]
+            
+            map_item = layout.itemById(map_item_name)
+            
+            if not map_item:
+                raise QgsProcessingException(f'Map item "{map_item_name}" not found in layout "{layout_name}"')
+            
+            extent = map_item.extent()
+            scale = round(map_item.scale())
+            
+            project_home = QgsProject.instance().homePath()
+            output_path = os.path.join(project_home, f'atlas_{scale}.shp')
+            
+            if not os.path.exists(output_path):
+                project_crs = QgsProject.instance().crs()
+                polygon_layer = QgsVectorLayer(f'Polygon?crs={project_crs.authid()}', f'atlas_{scale}', 'memory')
+                provider = polygon_layer.dataProvider()
+                provider.addAttributes([
+                    QgsField('order', QVariant.Int),
+                    QgsField('scale', QVariant.String),
+                    QgsField('subtitle', QVariant.String),
+                    QgsField('note', QVariant.String)
+                ])
+                polygon_layer.updateFields()
+                order = 1
             else:
-                raise QgsProcessingException(f'Error adding layer to project: {output_path}')
+                polygon_layer = QgsVectorLayer(output_path, f'atlas_{scale}', 'ogr')
+                if not polygon_layer.isValid():
+                    raise QgsProcessingException(f'Failed to load existing layer: {output_path}')
+                features = list(polygon_layer.getFeatures())
+                order = max([f['order'] for f in features], default=0) + 1
+            
+            points = [
+                QgsPointXY(extent.xMinimum(), extent.yMinimum()),
+                QgsPointXY(extent.xMaximum(), extent.yMinimum()),
+                QgsPointXY(extent.xMaximum(), extent.yMaximum()),
+                QgsPointXY(extent.xMinimum(), extent.yMaximum()),
+                QgsPointXY(extent.xMinimum(), extent.yMinimum())
+            ]
+            
+            feature = QgsFeature()
+            feature.setGeometry(QgsGeometry.fromPolygonXY([points]))
+            feature.setAttributes([order, f'{scale} - {layout_name}', subtitle, note])
+            polygon_layer.dataProvider().addFeature(feature)
+            
+            # Save the layer to the specified output path
+            QgsVectorFileWriter.writeAsVectorFormat(polygon_layer, output_path, "UTF-8", polygon_layer.crs(), "ESRI Shapefile", False)
+            
+            # Add or update the saved layer in the project
+            existing_layers = QgsProject.instance().mapLayersByName(f'atlas_{scale}')
+            if existing_layers:
+                existing_layer = existing_layers[0]
+                existing_layer.reload()
+                polygon_layer = existing_layer  # Use the reloaded layer
+            else:
+                saved_layer = QgsVectorLayer(output_path, f'atlas_{scale}', 'ogr')
+                if saved_layer.isValid():
+                    QgsProject.instance().addMapLayer(saved_layer)
+                    polygon_layer = saved_layer  # Use the added layer
+                else:
+                    raise QgsProcessingException(f'Error adding layer to project: {output_path}')
+            
+            # Apply symbol and labeling styles
+            self.applyStyles(polygon_layer)
         
-        # Apply symbol and labeling styles
-        self.applyStyles(polygon_layer)
+                    # Limit feedback messages
+            if feedback.isCanceled():
+                return {}
+
+            feedback.setProgress(100)
+        except Exception as e:
+            feedback.reportError(f"Error: {str(e)}")
+            raise QgsProcessingException(str(e))
         
         return {}
 
