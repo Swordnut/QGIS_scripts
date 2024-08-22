@@ -19,7 +19,11 @@ from qgis.core import (
     QgsSimpleFillSymbolLayer,
     QgsFillSymbol,
     QgsSingleSymbolRenderer,
-    QgsUnitTypes
+    QgsUnitTypes,
+    QgsProcessingParameterExpression,
+    QgsExpression, 
+    QgsExpressionContext, 
+    QgsExpressionContextUtils
 )
 from qgis.analysis import Qgis
 from qgis.PyQt.QtCore import QVariant
@@ -30,8 +34,8 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
     LAYOUT_NAME = 'LAYOUT_NAME'
     MAP_NAME = 'MAP_NAME'
     CUSTOM_MAP_NAME = 'CUSTOM_MAP_NAME'
-    SUBTITLE = 'SUBTITLE'
-    NOTE = 'NOTE'
+    EXP_1 = 'EXP_1'
+    EXP_2 = 'EXP_2'
 
     def initAlgorithm(self, config=None):
         layout_manager = QgsProject.instance().layoutManager()
@@ -45,7 +49,7 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
             )
         )
         
-        map_item_names = ['Map_1', 'In_Report_Map', 'Small Scale Map', 'Mid Scale Map', 'UK Map']
+        map_item_names = ['Map_1', 'Map 1', 'In_Report_Map', 'Small Scale Map', 'Mid Scale Map', 'UK Map']
         
         self.addParameter(
             QgsProcessingParameterEnum(
@@ -65,23 +69,28 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
         )
         
         self.addParameter(
-            QgsProcessingParameterString(
-                self.SUBTITLE,
-                'Subtitle',
-                'Your subtitle here'
+            QgsProcessingParameterExpression(
+                self.EXP_1,
+                'User Attribute 1 (use single inverted commas for normal text)',
+                '',
+                optional=True
             )
         )
         
         self.addParameter(
-            QgsProcessingParameterString(
-                self.NOTE,
-                'Note',
-                'Your note here'
+            QgsProcessingParameterExpression(
+                self.EXP_2,
+                'User Attribute 2 (use single inverted commas for normal text)',
+                '',
+                optional=True
             )
         )
+        
+
+
 
     def processAlgorithm(self, parameters, context, feedback):
-        
+
         # Minimal feedback output
         feedback.setProgressText('Processing layout extent polygon...')
         
@@ -89,17 +98,19 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
             layout_index = self.parameterAsEnum(parameters, self.LAYOUT_NAME, context)
             map_item_index = self.parameterAsEnum(parameters, self.MAP_NAME, context)
             custom_map_item_name = self.parameterAsString(parameters, self.CUSTOM_MAP_NAME, context)
-            subtitle = self.parameterAsString(parameters, self.SUBTITLE, context)
-            note = self.parameterAsString(parameters, self.NOTE, context)
+            exp_1 = self.parameterAsString(parameters, self.EXP_1, context)
+            exp_2 = self.parameterAsString(parameters, self.EXP_2, context)
             
             layout_manager = QgsProject.instance().layoutManager()
             layout_name = layout_manager.layouts()[layout_index].name()
             layout = layout_manager.layoutByName(layout_name)
             
-            map_item_names = ['Map_1', 'In_Report_Map', 'Small Scale Map', 'Mid Scale Map', 'UK Map']
+            map_item_names = ['Map_1', 'Map 1', 'In_Report_Map', 'Small Scale Map', 'Mid Scale Map', 'UK Map']
             map_item_name = custom_map_item_name if custom_map_item_name else map_item_names[map_item_index]
             
             map_item = layout.itemById(map_item_name)
+            
+
             
             if not map_item:
                 raise QgsProcessingException(f'Map item "{map_item_name}" not found in layout "{layout_name}"')
@@ -108,22 +119,23 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
             scale = round(map_item.scale())
             
             project_home = QgsProject.instance().homePath()
-            output_path = os.path.join(project_home, f'atlas_{scale}.shp')
+            output_path = os.path.join(project_home, 'atlas.shp')
             
             if not os.path.exists(output_path):
                 project_crs = QgsProject.instance().crs()
-                polygon_layer = QgsVectorLayer(f'Polygon?crs={project_crs.authid()}', f'atlas_{scale}', 'memory')
+                polygon_layer = QgsVectorLayer(f'Polygon?crs={project_crs.authid()}', 'atlas', 'memory')
                 provider = polygon_layer.dataProvider()
                 provider.addAttributes([
                     QgsField('order', QVariant.Int),
                     QgsField('scale', QVariant.String),
-                    QgsField('subtitle', QVariant.String),
-                    QgsField('note', QVariant.String)
+                    QgsField('layout',QVariant.String),
+                    QgsField('exp_1', QVariant.String),
+                    QgsField('exp_2', QVariant.String)
                 ])
                 polygon_layer.updateFields()
                 order = 1
             else:
-                polygon_layer = QgsVectorLayer(output_path, f'atlas_{scale}', 'ogr')
+                polygon_layer = QgsVectorLayer(output_path, 'atlas', 'ogr')
                 if not polygon_layer.isValid():
                     raise QgsProcessingException(f'Failed to load existing layer: {output_path}')
                 features = list(polygon_layer.getFeatures())
@@ -139,20 +151,30 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
             
             feature = QgsFeature()
             feature.setGeometry(QgsGeometry.fromPolygonXY([points]))
-            feature.setAttributes([order, f'{scale} - {layout_name}', subtitle, note])
+    
+            # Evaluate the expressions in the context of the current feature
+            expression_context = QgsExpressionContext()
+            expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(polygon_layer))
+            expression_context.setFeature(feature)
+
+            exp_1_value = QgsExpression(exp_1).evaluate(expression_context)
+            exp_2_value = QgsExpression(exp_2).evaluate(expression_context)
+            
+            feature.setAttributes([order, scale, layout_name, exp_1_value, exp_2_value])
+            
             polygon_layer.dataProvider().addFeature(feature)
             
             # Save the layer to the specified output path
             QgsVectorFileWriter.writeAsVectorFormat(polygon_layer, output_path, "UTF-8", polygon_layer.crs(), "ESRI Shapefile", False)
             
             # Add or update the saved layer in the project
-            existing_layers = QgsProject.instance().mapLayersByName(f'atlas_{scale}')
+            existing_layers = QgsProject.instance().mapLayersByName('atlas')
             if existing_layers:
                 existing_layer = existing_layers[0]
                 existing_layer.reload()
                 polygon_layer = existing_layer  # Use the reloaded layer
             else:
-                saved_layer = QgsVectorLayer(output_path, f'atlas_{scale}', 'ogr')
+                saved_layer = QgsVectorLayer(output_path, 'atlas', 'ogr')
                 if saved_layer.isValid():
                     QgsProject.instance().addMapLayer(saved_layer)
                     polygon_layer = saved_layer  # Use the added layer
@@ -161,8 +183,9 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
             
             # Apply symbol and labeling styles
             self.applyStyles(polygon_layer)
+            
         
-                    # Limit feedback messages
+            # Limit feedback messages
             if feedback.isCanceled():
                 return {}
 
