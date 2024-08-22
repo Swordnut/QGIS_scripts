@@ -37,13 +37,12 @@ This script compares attribute values in two different layers and selects featur
 ## layout_extent_polygon.py for Atlas layouts
 
 This helps create and edit atlas layouts. It fetches the extent of your selcted layout window and creates a scaled rectangle polygon layer
--updated to woirk with QGIS 3.28 upwards, including the changes to styling in 3.36 onwards 
 
-   - The new layer will be named "atlas_{mapscale}.shp" and will be saved to the project home.
-   - Attributes: the layout order (int), origin "{mapscale} {layoutname}" and 2 empty character attributes for you to use as you want
+   - The new layer will be named "atlas.shp" and will be saved to the project home.
+   - Attributes: the layout order (int), scale, layout origin and 2 empty character attributes for you to use as you want, including using expressions.
    -Layout order will be incremented if the script is used to generate more polygons in the same scale. 
-      -If a new scale is used, the script will save the polygon as a new layer. 
-      - You can edit the layer as normal though, including inserting different sized polygons. Subsequent uses of the script will keep incrementing the order number, as it just looks for the highest number so far
+      - If a new scale is used, the script will save the polygon in the same layer but will note the scale as an attribute. 
+      - Subsequent uses of the script will keep incrementing the order number, as it just looks for the highest number so far
    - Produces styled polygons
       - transparent boxes, big helpful label for the order number
    - Drop-down menu for map window names is not auto-populated
