@@ -25,7 +25,7 @@ from qgis.core import (
     QgsExpressionContext, 
     QgsExpressionContextUtils
 )
-from qgis.analysis import Qgis
+import qgis.analysis
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QColor, QFont
 
