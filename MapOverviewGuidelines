@@ -1,10 +1,9 @@
 # credit to Cristoph P for the excellent groundwork, I added a workaround for the offset issue and refactored for easier use. original thread https://gis.stackexchange.com/questions/379558/adding-extent-lines-to-overview-maps-in-qgis-print-composer
 
 # 1. Create a rectangle that fills the gap between the top-left corner of your layout page and the top left corner of your main map window. Call this rectangle "offsetguide". You can make it invisible later.
-    
 # 2. Create a polygon object for your overview guidelines using geometry generator. It must be the same size as your layout page.
-
-# 3. invoke from the geometry generator with "convex_hull(geom_from_wkt(showMapOverviewGuidelines('Map_1', 'inset',@layout_name)))"
+# 3. Add this script to your project as a function
+# 4. invoke from the geometry generator with "convex_hull(geom_from_wkt(showMapOverviewGuidelines('Map_1', 'inset',@layout_name)))"
 
 from qgis.core import * 
 from qgis.gui import *
