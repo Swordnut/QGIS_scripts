@@ -1,0 +1,82 @@
+# credit to Cristoph P for the excellent groundwork, I added a workaround for the offset issue and refactored for easier use. original thread https://gis.stackexchange.com/questions/379558/adding-extent-lines-to-overview-maps-in-qgis-print-composer
+
+# 1. Create a rectangle that fills the gap between the top-left corner of your layout page and the top left corner of your main map window. Call this rectangle "offsetguide". You can make it invisible later.
+    
+# 2. Create a polygon object for your overview guidelines using geometry generator. It must be the same size as your layout page.
+
+# 3. invoke from the geometry generator with "convex_hull(geom_from_wkt(showMapOverviewGuidelines('Map_1', 'inset',@layout_name)))"
+
+from qgis.core import * 
+from qgis.gui import *
+from PyQt5.QtCore import QPointF
+import re
+
+@qgsfunction(args='auto', group='Custom', referenced_columns=[])
+def showMapOverviewGuidelines(mainMapItemId, overviewMapItemId, currentlayoutname, feature):
+    
+    # Get the current layout context
+    layoutName = currentlayoutname  # Get the current layout's name dynamically
+    
+    # Get the project and layout manager
+    project = QgsProject.instance()
+    layout_manager = project.layoutManager()
+    
+    # Retrieve the layout
+    layout = layout_manager.layoutByName(layoutName)
+    if not layout:
+        return f"Layout {layoutName} not found!"
+    
+    # Get the main map (mainMapItemId) and the overview map (overviewMapItemId)
+    main_map = layout.itemById(mainMapItemId)
+    overview_map = layout.itemById(overviewMapItemId)
+    
+    if not main_map or not overview_map:
+        return f"Map {mainMapItemId} or Overview {overviewMapItemId} not found!"
+    
+    # Retrieve the "offsetguide" rectangle for offset values
+    offsetguide_rect = layout.itemById("offsetguide")
+    if not offsetguide_rect:
+        return f"Rectangle object 'offsetguide' not found in layout {layoutName}!"
+
+    # Get the size (width and height) of the offsetguide rectangle to use as the offset
+    offsetguide_width = offsetguide_rect.rectWithFrame().width()
+    offsetguide_height = offsetguide_rect.rectWithFrame().height()
+
+    # Apply the offset values from the "offsetguide"
+    offset_x = offsetguide_width
+    offset_y = offsetguide_height
+
+    # Get the extent of the overview (rectangular area in layout units)
+    overviewRectangle = overview_map.rectWithFrame()
+    overviewBottomLeft = overviewRectangle.bottomLeft()
+    overviewTopRight = overviewRectangle.topRight()
+
+    # Get the page position of the overview map
+    overviewPagePosition = overview_map.pagePositionWithUnits()
+    overviewOffsetX = overviewPagePosition.x()
+    overviewOffsetY = overviewPagePosition.y()
+
+    # Adjust the overview box coordinates by its page position
+    overviewBottomLeftAdjusted = QgsPointXY(overviewBottomLeft.x() + overviewOffsetX, overviewBottomLeft.y() + overviewOffsetY)
+    overviewTopRightAdjusted = QgsPointXY(overviewTopRight.x() + overviewOffsetX, overviewTopRight.y() + overviewOffsetY)
+
+    # Create the overview rectangle polygon in layout units
+    overviewPolygon = QgsRectangle(overviewBottomLeftAdjusted.x(), overviewBottomLeftAdjusted.y(), 
+                                   overviewTopRightAdjusted.x(), overviewTopRightAdjusted.y()).asWktPolygon()
+    
+    # Get the extent of the main map in map units (this is used to create the indicator box)
+    mainMapExtent = overview_map.extent()
+    indicatorBottomLeft = main_map.mapToItemCoords(QPointF(mainMapExtent.xMinimum(), mainMapExtent.yMinimum()))
+    indicatorTopRight = main_map.mapToItemCoords(QPointF(mainMapExtent.xMaximum(), mainMapExtent.yMaximum()))
+
+    # Create the indicator rectangle in layout units and apply the offset from the "offsetguide"
+    indicatorPolygon = QgsRectangle(indicatorBottomLeft.x() + offset_x, indicatorBottomLeft.y() + offset_y, 
+                                    indicatorTopRight.x() + offset_x, indicatorTopRight.y() + offset_y).asWktPolygon()
+
+    # Clean up the WKT polygons using regex
+    overviewPolygon = re.search('[^(]+(.+)', overviewPolygon).group(1)
+    indicatorPolygon = re.search('[^(]+(.+)', indicatorPolygon).group(1)
+    
+    # Return the geometry as a multipolygon (combining the overview and indicator polygons)
+    finalGeometry = f"Multipolygon({overviewPolygon},{indicatorPolygon})"
+    return finalGeometry
