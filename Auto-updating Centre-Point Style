@@ -1,0 +1,11 @@
+# Point Layer Styling
+# Add to the Geometry Generator styling to create a single marker at the centre of a target layer. 
+# Will automatically update if the target layer is altered
+
+if (
+    layer_property('target_layer', 'feature_count') > 0,
+    centroid( 
+		layer_property('target_layer','extent')
+		),
+    make_point(0, 0)
+	)
