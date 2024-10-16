@@ -14,7 +14,7 @@ from qgis.PyQt.QtCore import QCoreApplication  # Correct import for QCoreApplica
 from qgis.core import Qgis
 from qgis import processing  # Correct import for processing module
 
-class ConcentricRingBuffers(QgsProcessingAlgorithm):
+class ConcentricDonutBuffers(QgsProcessingAlgorithm):
     INPUT_LAYER = 'INPUT_LAYER'
     OUTPUT_FOLDER = 'OUTPUT_FOLDER'
     CUSTOM_DISTANCES = 'CUSTOM_DISTANCES'
@@ -35,7 +35,7 @@ class ConcentricRingBuffers(QgsProcessingAlgorithm):
             QgsProcessingParameterFolderDestination(
                 self.OUTPUT_FOLDER,
                 self.tr('Output Folder'),
-                defaultValue=os.path.join(QgsProject.instance().homePath(), 'setting_study_areas')
+                defaultValue=os.path.join(QgsProject.instance().homePath(), 'donut_buffers')
             )
         )
 
@@ -108,7 +108,7 @@ class ConcentricRingBuffers(QgsProcessingAlgorithm):
             buffers.append(current_buffer)
 
             # Save intermediate buffer for debugging into the gluten_free folder
-            raw_file = os.path.join(raw_folder, f'{buffer_name}_raw.gpkg')
+            raw_file = os.path.join(raw_folder, f'{buffer_name}_solid.gpkg')
             processing.run("native:savefeatures", {
                 'INPUT': current_buffer,
                 'OUTPUT': raw_file
@@ -145,7 +145,7 @@ class ConcentricRingBuffers(QgsProcessingAlgorithm):
             if add_to_project:
                 self.add_layer_to_project(output_file, buffer_name, feedback)
 
-            feedback.pushInfo(f"Saved ring buffer {buffer_name} at {output_file}")
+            feedback.pushInfo(f"Saved donut buffer {buffer_name} at {output_file}")
 
         # Save the smallest buffer directly (the first one)
         first_buffer_name = buffer_names[0]
@@ -165,7 +165,13 @@ class ConcentricRingBuffers(QgsProcessingAlgorithm):
         feedback.pushInfo(f"Saved smallest buffer {first_buffer_name} at {first_output_file}")
 
         return {}
-
+            """ 
+            This styling code is not working with V26 and up - WIP
+            to do - 
+                get it working 
+                investigate - is native styling panel possible to bruing into the processing toolbox?
+                give user option to point at QML style file?
+            """
     def applyStyles(self, layer_path, context, feedback):
         """ Manually apply styles to the layer """
         layer = QgsVectorLayer(layer_path, "Styled Layer", "ogr")
@@ -263,4 +269,4 @@ class ConcentricRingBuffers(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return ConcentricRingBuffers()
+        return ConcentricDonutBuffers()
