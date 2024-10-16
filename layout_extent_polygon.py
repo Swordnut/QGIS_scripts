@@ -104,8 +104,9 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
             layout_manager = QgsProject.instance().layoutManager()
             layout_name = layout_manager.layouts()[layout_index].name()
             layout = layout_manager.layoutByName(layout_name)
-            
-            map_item_names = ['Map_1', 'Map 1', 'In_Report_Map', 'Small Scale Map', 'Mid Scale Map', 'UK Map']
+
+            # Map Name drop-down options for user convinience the processing toolbox API does not have the option to auto-populate this
+            map_item_names = ['Map 1', 'ADD YOUR STANDARD MAP WINDOW ITEM ID'S TO THE SCRIPT']
             map_item_name = custom_map_item_name if custom_map_item_name else map_item_names[map_item_index]
             
             map_item = layout.itemById(map_item_name)
