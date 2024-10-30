@@ -49,7 +49,7 @@ class CreateLayoutExtentPolygon(QgsProcessingAlgorithm):
             )
         )
         
-        map_item_names = ['Map_1', 'Map 1', 'In_Report_Map', 'Small Scale Map', 'Mid Scale Map', 'UK Map']
+        map_item_names = ['Map 1', 'add your list to the script']
         
         self.addParameter(
             QgsProcessingParameterEnum(
