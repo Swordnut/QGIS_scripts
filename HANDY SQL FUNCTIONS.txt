@@ -1,0 +1,27 @@
+# selects rows where 2 or more values do not match but not where 1 match is fine. 
+FROM all_con_invoices 
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.invoices 
+    WHERE public.invoices.pcode = all_con_invoices.pcode 
+    AND public.invoices.issue_date = all_con_invoices.issue_date::date);
+
+
+# select rows after date in old table. delete them. insert all new data from raw table - its 2 queries
+
+DELETE FROM public.project_time_and_expenses
+WHERE transaction_date >= (
+    SELECT MIN(transaction_date)
+    FROM raw_data.con_project_time_and_expense
+);
+
+INSERT INTO public.project_time_and_expenses
+SELECT *
+FROM raw_data.con_project_time_and_expenses;
+
+#change formats of column data before inserting or updating - this one uses a regex replace to get rid of commas in numbers
+
+CAST (REPLACE(workstage_total_fee, ',', '') AS double precision) AS workstage_total_fee,
+CAST (REPLACE(workstage_hours_to_date, ',', '') AS double precision) AS workstage_hours_to_date,
+
+

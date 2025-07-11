@@ -1,0 +1,14 @@
+regexp_replace("PrefRef",'PRN','')
+
+regexp_replace("MonUID",left("MonUID",2),'')
+
+left("LockedDate",10) 
+
+right("LockedDate",12) 
+
+regexp_replace( "Name", right("Name",2), 'Grade ' || "Grade" || ' Listed')
+
+
+
+
+
